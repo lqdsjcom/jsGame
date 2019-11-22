@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport"
+    content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <title>1</title>
+  <style>
+    #starge {
+      background: #000;
+      position: relative;
+    }
+  </style>
+
+</head>
+
+<body>
+  <div id="starge">
+
+  </div>
+  <button id="start" value="">开始</button>
+  <button id="stop" value="">暂停</button>
+  <p id="clears"></p>
+</body>
+<script src="./game.js"></script>
+<script>
+
+  const game = new Game('starge', 500, 500);
+
+  const start = document.getElementById('start');
+  const stops = document.getElementById('stop');
+  start.onclick = function () {
+    game.startGame();
+  }
+  stops.onclick = function () {
+    game.stopGame();
+  }
+  window.addEventListener('keydown', function (evnet) {
+    if (evnet.keyCode == 39) { //向右
+      game.moveRight();
+    }
+    if (evnet.keyCode == 37) { //左
+      game.moveLeft();
+    }
+  })
+</script>
+
+</html>
