@@ -15,18 +15,12 @@ var Game = /** @class */ (function () {
         this.clearfoeNumber = 0;
         this.nodeRoot = this.width / 2;
         this.nodeList = Array.apply(null, Array(this.width)).map(function (x, i) { return i; });
-        this.nodeMap = {
-            key: this.nodeRoot,
-            left: null,
-            right: null,
-            isDestroy: false,
-            isSelected: false
-        };
+        this.nodeMap = null;
         this.ele = document.getElementById(this.id);
         this.ele.style.width = this.width + 'px';
         this.ele.style.height = this.height + 'px';
         this.nodeList.map(function (x, i) {
-            _this.InsertNode(_this.nodeMap, i);
+            _this.nodeMap = _this.InsertNode(_this.nodeMap, i);
         });
         for (var i = 0; i < 5; i++) {
             this.CreateElementFoe();
@@ -122,37 +116,35 @@ var Game = /** @class */ (function () {
         return isPass;
     };
     Game.prototype.InsertNode = function (node, key) {
+        if (node == null)
+            return this.newNode(key);
         if (key < node.key) {
-            if (node.left === null) {
-                node.left = {
-                    key: key,
-                    left: null,
-                    right: null,
-                    isDestroy: false,
-                    isSelected: false
-                };
-                return;
-            }
-            else {
-                return this.InsertNode(node.left, key);
-            }
+            node.left = this.InsertNode(node.left, key);
+        }
+        else if (key > node.key) {
+            node.right = this.InsertNode(node.right, key);
         }
         else {
-            if (node.right === null) {
-                node.right = {
-                    key: key,
-                    left: null,
-                    right: null,
-                    isDestroy: false,
-                    isSelected: false
-                };
-                return;
-            }
-            else {
-                return this.InsertNode(node.right, key);
-            }
+            return node;
         }
-        return;
+        node.height = 1 + this.max(this.heights(node.left), this.heights(node.right));
+        var balance = this.getBalance(node);
+        if (balance > 1 && key < node.left.key) //LL型
+            return this.ll_rotate(node);
+        if (balance < -1 && key > node.right.key) //RR型
+            return this.rr_rotate(node);
+        if (balance > 1 && key > node.left.key) //LR型
+         {
+            node.left = this.rr_rotate(node.left);
+            return this.ll_rotate(node);
+        }
+        if (balance < -1 && key < node.right.key) //RL型
+         {
+            node.right = this.ll_rotate(node.right);
+            return this.rr_rotate(node);
+        }
+        // console.log(node);
+        return node;
     };
     Game.prototype.NodeSearch = function (node, key) {
         if (node.key === key) {
@@ -169,6 +161,46 @@ var Game = /** @class */ (function () {
             }
         }
         return;
+    };
+    Game.prototype.heights = function (N) {
+        if (N == null)
+            return 0;
+        return N.height;
+    };
+    Game.prototype.max = function (a, b) {
+        return (a > b) ? a : b;
+    };
+    Game.prototype.getBalance = function (N) {
+        if (N == null)
+            return 0;
+        return this.heights(N.left) - this.heights(N.right);
+    };
+    Game.prototype.newNode = function (key) {
+        var node = {
+            key: key,
+            left: null,
+            right: null,
+            height: 1,
+            isDestroy: false,
+            isSelected: false,
+        };
+        return node;
+    };
+    Game.prototype.ll_rotate = function (y) {
+        var x = y.left;
+        y.left = x.right;
+        x.right = y;
+        y.height = this.max(this.heights(y.left), this.heights(y.right)) + 1;
+        x.height = this.max(this.heights(x.left), this.heights(x.right)) + 1;
+        return x;
+    };
+    Game.prototype.rr_rotate = function (y) {
+        var x = y.right;
+        y.right = x.left;
+        x.left = y;
+        y.height = this.max(this.heights(y.left), this.heights(y.right)) + 1;
+        x.height = this.max(this.heights(x.left), this.heights(x.right)) + 1;
+        return x;
     };
     Game.prototype.setDestroy = function (key) {
         var nodes = this.NodeSearch(this.nodeMap, key);

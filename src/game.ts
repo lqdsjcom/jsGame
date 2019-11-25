@@ -5,6 +5,7 @@ interface Nodes {
     right: Nodes | null;
     isDestroy: boolean; //是否被销毁
     isSelected: boolean; //是否被选中
+    height: number;
 }
 class Game {
     isClear: boolean; //是否初始化
@@ -44,19 +45,13 @@ class Game {
         this.clearfoeNumber = 0;
         this.nodeRoot = this.width / 2;
         this.nodeList = Array.apply(null, Array(this.width)).map((x: any, i: number) => i);
-        this.nodeMap = {
-            key: this.nodeRoot,
-            left: null,
-            right: null,
-            isDestroy: false,
-            isSelected: false
-        };
+        this.nodeMap = null;
         this.ele = document.getElementById(this.id);
         this.ele.style.width = this.width + 'px';
         this.ele.style.height = this.height + 'px';
 
         this.nodeList.map((x: any, i: number) => {
-            this.InsertNode(this.nodeMap, i);
+            this.nodeMap = this.InsertNode(this.nodeMap, i);
         });
 
         for (let i = 0; i < 5; i++) {
@@ -94,7 +89,7 @@ class Game {
         this.ele.appendChild(this.bullet);
     }
     public CreateElementFoe() { //创建敌人
-        if(this.foeNumber >= this.width-1){ //不在创建敌人
+        if (this.foeNumber >= this.width - 1) { //不在创建敌人
             return;
         }
         let random = this.random(this.width - 10);
@@ -151,35 +146,47 @@ class Game {
         }
         return isPass;
     }
-    public InsertNode(node: Nodes, key: number): null | void {
+    public InsertNode(node: Nodes, key: number): null | Nodes {
+        if (node == null)
+            return this.newNode(key);
+
         if (key < node.key) {
-            if (node.left === null) {
-                node.left = {
-                    key: key,
-                    left: null,
-                    right: null,
-                    isDestroy: false,
-                    isSelected: false
-                }
-                return;
-            } else {
-                return this.InsertNode(node.left, key)
-            }
-        } else {
-            if (node.right === null) {
-                node.right = {
-                    key: key,
-                    left: null,
-                    right: null,
-                    isDestroy: false,
-                    isSelected: false
-                }
-                return;
-            } else {
-                return this.InsertNode(node.right, key)
-            }
+            node.left = this.InsertNode(node.left, key);
         }
-        return;
+        else if (key > node.key) {
+            node.right = this.InsertNode(node.right, key);
+        }
+        else {
+            return node;
+        }
+
+        node.height = 1 + this.max(this.heights(node.left), this.heights(node.right));
+
+        let balance = this.getBalance(node);
+
+        if (balance > 1 && key < node.left.key) //LL型
+            return this.ll_rotate(node);
+
+
+        if (balance < -1 && key > node.right.key)     //RR型
+            return this.rr_rotate(node);
+
+
+        if (balance > 1 && key > node.left.key)     //LR型
+        {
+            node.left = this.rr_rotate(node.left);
+            return this.ll_rotate(node);
+        }
+
+        if (balance < -1 && key < node.right.key)     //RL型
+        {
+            node.right = this.ll_rotate(node.right);
+            return this.rr_rotate(node);
+        }
+
+        // console.log(node);
+
+        return node;
     }
     public NodeSearch(node: Nodes, key: number): Nodes { //二叉树中序查找
         if (node.key === key) {
@@ -195,18 +202,69 @@ class Game {
         }
         return;
     }
-    public setDestroy(key:number){
+
+
+    private heights(N: Nodes) {
+        if (N == null)
+            return 0;
+        return N.height;
+    }
+
+    private max(a: number, b: number) {
+        return (a > b) ? a : b;
+    }
+
+    private getBalance(N: Nodes) {
+        if (N == null)
+            return 0;
+        return this.heights(N.left) - this.heights(N.right);
+    }
+
+    private newNode(key: number) {
+        let node: Nodes = {
+            key: key,
+            left: null,
+            right: null,
+            height: 1,
+            isDestroy: false,
+            isSelected: false,
+        }
+        return node;
+    }
+
+    private ll_rotate(y: Nodes) {
+        let x = y.left;
+        y.left = x.right;
+        x.right = y;
+
+        y.height = this.max(this.heights(y.left), this.heights(y.right)) + 1;
+        x.height = this.max(this.heights(x.left), this.heights(x.right)) + 1;
+
+        return x;
+    }
+
+    private rr_rotate(y: Nodes) {
+        let x = y.right;
+        y.right = x.left;
+        x.left = y;
+
+        y.height = this.max(this.heights(y.left), this.heights(y.right)) + 1;
+        x.height = this.max(this.heights(x.left), this.heights(x.right)) + 1;
+
+        return x;
+    }
+    public setDestroy(key: number) {
         let nodes = this.NodeSearch(this.nodeMap, key);
         nodes.isDestroy = true;
         nodes.isSelected = true;
         this.clearfoeNumber++;
-        if(this.clearfoeNumber === this.foeNumber){ //已全部消灭敌人
+        if (this.clearfoeNumber === this.foeNumber) { //已全部消灭敌人
             this.endGame();
         }
         this.CreateElementFoe();
         var clears = document.getElementById('clears');
-        clears.innerText = '消灭敌人数量:'+this.clearfoeNumber;
-        console.log('消灭敌人数量:'+this.clearfoeNumber);
+        clears.innerText = '消灭敌人数量:' + this.clearfoeNumber;
+        console.log('消灭敌人数量:' + this.clearfoeNumber);
     }
     public moveFoeInterval() {
         let foeTagem: any = document.getElementsByClassName('foe');
@@ -230,14 +288,14 @@ class Game {
             for (let i of foeTagem) {
                 let top = i.offsetTop;
                 let left = i.offsetLeft;
-                if ( ( top >= y+20 ) && (x+10 >= left && x+10 <= left + 20)) {
+                if ((top >= y + 20) && (x + 10 >= left && x + 10 <= left + 20)) {
                     // this.bulletY = 0;
                     i.remove();
                     let key = parseInt(i.id);
                     this.setDestroy(key);
                     console.log('消灭' + i.id);
                 }
-                if(top > this.height-30){
+                if (top > this.height - 30) {
                     this.endGame();
                 }
             }
@@ -265,7 +323,7 @@ class Game {
             this.moveFoe(offsetX, offsetY);
             this.bullet.style.bottom = (10 + bulletY) + 'px';
         }
-        
+
     }
     public moveLeft() {
         if (this.isStart) {
@@ -294,7 +352,7 @@ class Game {
     }
     public startGame() {
         this.isStart = true;
-        if(this.isClear){
+        if (this.isClear) {
             var clears = document.getElementById('clears');
             clears.innerText = '';
             this.ele.innerHTML = '';
@@ -315,7 +373,7 @@ class Game {
         // this.bulletY = 0;
         // this.moveBullet(this.bulletY);
     }
-    public endGame(){
+    public endGame() {
         this.isClear = true;
         this.isStart = false;
         if (this.bulletInterval) {
